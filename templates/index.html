@@ -2,11 +2,26 @@
 <html lang="en">
 <head>
     <title>AI Voice Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>Hello</h1>
+    <!-- <h1>Hello</h1>
     <p>This is the first day of building voice agent.</p>
     <button onclick="sayHello()">Click Me</button>
+    <script src="/static/script.js"></script> -->
+    <div class="container">
+        <h1>AI Voice Agent</h1>
+        <p>Enter text below and click "Generate" to create audio.</p>
+        
+        <textarea id="text-input" rows="4" placeholder="Type your text here..."></textarea>
+        <br><br>
+        
+        <button id="generate-button">Generate Audio</button>
+        
+        <audio id="audio-player" controls></audio>
+    </div>
+
+    <!-- Your JavaScript file is still linked here -->
     <script src="/static/script.js"></script>
 </body>
 </html>
