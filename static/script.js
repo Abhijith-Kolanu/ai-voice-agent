@@ -1,72 +1,132 @@
-// function sayHello() {
-//     alert("Hello, your are done with the project setup using FastAPI!");
-// }
-
-
-// Wait until the entire HTML document is loaded before running the script
+// Wait for the entire HTML document to be fully loaded before running any script
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Get references to the HTML elements we need to interact with
-    const textInput = document.getElementById('text-input');
-    const generateButton = document.getElementById('generate-button');
+//    Text-to-Speech (TTS) Functionality
+    
+    const ttsButton = document.getElementById('generate-button');
+    const ttsInput = document.getElementById('text-input');
     const audioPlayer = document.getElementById('audio-player');
 
-    // Add a click event listener to the "Generate Audio" button
-    generateButton.addEventListener('click', async () => {
-        // Get the text from the input field
-        const textToSpeak = textInput.value;
-
-        // Basic validation: Make sure the text field isn't empty
-        if (!textToSpeak.trim()) {
-            alert('Please enter some text.');
+    const handleGenerateSpeech = async () => {
+        const text = ttsInput.value.trim();
+        if (!text) {
+            alert('You need to type something first!'); // Use alert since there's no error div
             return;
         }
 
-        // Optional: Show a loading state to the user
-        generateButton.textContent = 'Generating...';
-        generateButton.disabled = true;
+        // Update UI
+        ttsButton.disabled = true;
+        ttsButton.textContent = 'Generating...';
 
         try {
-            // Use the fetch API to send a POST request to our backend endpoint
+            // This assumes you have a backend endpoint at '/generate-audio'
             const response = await fetch('/generate-audio', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                // Convert the JavaScript object to a JSON string
-                body: JSON.stringify({
-                    text: textToSpeak,
-                    // You can specify voice/style here if you want to override the defaults
-                    // voice: "en-US-RyanNeural", 
-                    // style: "chat"
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
             });
 
-            // Check if the request was successful
-            if (!response.ok) {
-                // If not, try to get the error message from the server's response
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'An unknown error occurred.');
-            }
-
-            // If successful, parse the JSON response from our backend
             const data = await response.json();
-            const audioUrl = data.audio_url;
 
-            // Set the 'src' of the audio player to the URL we received
-            audioPlayer.src = audioUrl;
+            if (response.ok && data.audio_url) {
+                audioPlayer.src = data.audio_url;
+                audioPlayer.play().catch(e => console.warn("Autoplay was blocked by the browser."));
+            } else {
+                alert(data.error || 'An unknown error occurred during speech generation.');
+            }
+        } catch (err) {
+            alert('Could not connect to the server. ' + err.message);
+        } finally {
+            // Restore button
+            ttsButton.disabled = false;
+            ttsButton.textContent = 'Generate Audio';
+        }
+    };
 
-            // Tell the audio player to start playing the audio automatically
-            audioPlayer.play();
+    if (ttsButton) {
+        ttsButton.addEventListener('click', handleGenerateSpeech);
+    }
+
+
+//    Echo Bot Functionality
+    const startButton = document.getElementById('startRecording');
+    const stopButton = document.getElementById('stopRecording');
+    const recordedAudioPlayer = document.getElementById('recordedAudio');
+
+    // Check if essential elements exist
+    if (!startButton || !stopButton || !recordedAudioPlayer) {
+        console.error("Voice Recorder UI elements are missing from the HTML!");
+        alert("A critical UI element is missing. The recorder cannot start.");
+        return;
+    }
+
+    let mediaRecorder;
+    let recordedChunks = [];
+    let stream;
+
+    // Set initial button state
+    stopButton.disabled = true;
+
+    // --- Start Recording Event ---
+    startButton.addEventListener('click', async () => {
+        recordedChunks = [];
+        recordedAudioPlayer.src = ''; // Clear previous recording
+
+        try {
+            // Request microphone access
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Set up MediaRecorder
+            mediaRecorder = new MediaRecorder(stream);
+
+            // Event handler for when audio data is available
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            // Event handler for when recording is stopped
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                const audioUrl = URL.createObjectURL(blob);
+
+                recordedAudioPlayer.src = audioUrl;
+
+                // Release the microphone
+                stream.getTracks().forEach(track => track.stop());
+
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                startButton.textContent = 'Start Recording';
+            };
+
+            // Start recording and update UI
+            mediaRecorder.start();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            startButton.textContent = 'Recording...';
 
         } catch (error) {
-            // If anything goes wrong, log the error and show an alert to the user
-            console.error('Error generating audio:', error);
-            alert('Failed to generate audio. Please check the console for details.');
-        } finally {
-            // Re-enable the button and reset its text, whether the request succeeded or failed
-            generateButton.textContent = 'Generate Audio';
-            generateButton.disabled = false;
+            console.error('Recording error:', error);
+            alert('Could not access microphone. Please check browser permissions. Error: ' + error.message);
+            // Reset buttons on error
+            startButton.disabled = false;
+            stopButton.disabled = true;
         }
     });
+
+    // --- Stop Recording Event ---
+    stopButton.addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+    });
+
+    // --- Initial Browser Support Check ---
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Your browser does not support audio recording. Please use a modern browser like Chrome or Firefox.');
+        startButton.disabled = true;
+    }
 });
