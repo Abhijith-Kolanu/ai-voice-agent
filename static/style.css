@@ -131,3 +131,24 @@ p {
     color: #aaa;
     cursor: not-allowed;
 }
+
+/* --- Status and Transcription Result Styling --- */
+#status-message {
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+#transcription-result {
+    /* These styles are now an EXACT match to your inline style */
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    min-height: 50px;
+    background-color: #fafafa;
+    
+    /* These styles ensure readability */
+    color: #333; /* Dark text for the light background */
+    text-align: left; /* Better for reading paragraphs */
+    line-height: 1.5; /* More space between lines */
+}

@@ -1,7 +1,7 @@
 // Wait for the entire HTML document to be fully loaded before running any script
 document.addEventListener('DOMContentLoaded', () => {
 
-    //    Text-to-Speech (TTS) Functionality 
+    //    Text-to-Speech (TTS) Functionality (Unchanged)
     
     const ttsButton = document.getElementById('generate-button');
     const ttsInput = document.getElementById('text-input');
@@ -41,37 +41,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    //    Echo Bot Functionality & File Upload (UPDATED FOR DAY 5)
+    //    AI Echo Bot Functionality (UPDATED FOR DAY 7)
 
     const startButton = document.getElementById('startRecording');
     const stopButton = document.getElementById('stopRecording');
     const recordedAudioPlayer = document.getElementById('recordedAudio');
-    // --- NEW: Get the status div from the HTML ---
-    const uploadStatus = document.getElementById('upload-status');
+    const statusMessage = document.getElementById('status-message');
+    const transcriptionResult = document.getElementById('transcription-result');
 
-    // --- NEW: Add the new element to the check ---
-    if (!startButton || !stopButton || !recordedAudioPlayer || !uploadStatus) {
-        console.error("Voice Recorder UI elements are missing from the HTML!");
-        alert("A critical UI element is missing. The recorder cannot start.");
+    // For Day 7, we don't need to show the transcription box. Let's hide it.
+    if(transcriptionResult) {
+        transcriptionResult.style.display = 'none';
+    }
+
+    if (!startButton || !stopButton || !recordedAudioPlayer || !statusMessage) {
+        console.error("A required UI element is missing!");
         return;
     }
 
     let mediaRecorder;
     let recordedChunks = [];
-    let stream;
 
     stopButton.disabled = true;
 
     // --- Start Recording Event ---
     startButton.addEventListener('click', async () => {
         recordedChunks = [];
-        recordedAudioPlayer.src = ''; 
-        // --- NEW: Clear the status message on new recording ---
-        uploadStatus.textContent = ''; 
+        recordedAudioPlayer.src = '';
+        statusMessage.textContent = '';
+        if(transcriptionResult) transcriptionResult.textContent = '';
 
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
+
+            // Event handler for when recording is stopped
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                
+                // --- THIS IS THE KEY FIX ---
+                // We COMMENT OUT the lines that play the user's own voice back immediately.
+                /*
+                const audioUrl = URL.createObjectURL(blob);
+                recordedAudioPlayer.src = audioUrl;
+                */
+                
+                stream.getTracks().forEach(track => track.stop());
+
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                startButton.textContent = 'Start Recording';
+
+                // --- Call the ACTIVE Day 7 function ---
+                getAiEcho(blob);
+
+                // --- We COMMENT OUT the call to the old Day 6 function ---
+                /*
+                transcribeAudio(blob);
+                */
+            };
 
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
@@ -79,83 +107,81 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            // Event handler for when recording is stopped
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(blob);
-                recordedAudioPlayer.src = audioUrl;
-                stream.getTracks().forEach(track => track.stop());
-
-                // Update UI buttons
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                startButton.textContent = 'Start Recording';
-
-                // --- NEW: CALL THE UPLOAD FUNCTION ---
-                uploadAudio(blob);
-            };
-
-            // Start recording and update UI
             mediaRecorder.start();
             startButton.disabled = true;
             stopButton.disabled = false;
             startButton.textContent = 'Recording...';
 
         } catch (error) {
-            console.error('Recording error:', error);
-            alert('Could not access microphone. Please check browser permissions. Error: ' + error.message);
-            startButton.disabled = false;
-            stopButton.disabled = true;
+            alert('Could not access microphone. Please grant permission.');
         }
     });
 
-    // --- Stop Recording Event (No change needed here) ---
+    // --- Stop Recording Event ---
     stopButton.addEventListener('click', () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
         }
     });
 
-    // --- NEW: FUNCTION TO HANDLE THE FILE UPLOAD ---
-    const uploadAudio = async (audioBlob) => {
-        // Prepare the data to be sent
+
+    // --- Day 6 Function (Commented out, no longer active) ---
+    /*
+    const transcribeAudio = async (audioBlob) => {
         const formData = new FormData();
-        // The key 'audio_data' MUST match the parameter name in your FastAPI endpoint
         formData.append('audio_data', audioBlob, 'recording.webm');
-
-        // Update the UI to show that uploading has started
-        uploadStatus.textContent = 'Uploading...';
-        uploadStatus.style.color = '#333'; // Reset color
-
+        statusMessage.textContent = 'Transcribing...';
         try {
-            // Send the file to the server
-            const response = await fetch('/upload-audio', {
+            const response = await fetch('/transcribe/file', {
                 method: 'POST',
                 body: formData
             });
-
             const data = await response.json();
-
             if (response.ok) {
-                // Display success message from the server
-                uploadStatus.textContent = `✅ Uploaded: ${data.filename} (${Math.round(data.size_bytes / 1024)} KB)`;
-                uploadStatus.style.color = 'green';
+                statusMessage.textContent = '✅ Transcription Successful!';
+                transcriptionResult.textContent = data.transcript;
             } else {
-                // Display error message from the server
-                uploadStatus.textContent = `❌ Upload failed: ${data.detail}`;
-                uploadStatus.style.color = 'red';
+                statusMessage.textContent = `❌ Transcription failed: ${data.detail}`;
             }
         } catch (error) {
-            // Handle network errors
-            uploadStatus.textContent = '❌ Upload failed: Could not connect to the server.';
-            uploadStatus.style.color = 'red';
-            console.error('Network or server error:', error);
+            statusMessage.textContent = '❌ Transcription failed: Could not connect to the server.';
+        }
+    };
+    */
+
+
+    // --- Day 7 Function to Handle AI Echo (This one is ACTIVE) ---
+    const getAiEcho = async (audioBlob) => {
+        const formData = new FormData();
+        formData.append('audio_data', audioBlob, 'recording.webm');
+
+        statusMessage.textContent = 'Generating AI echo... (This may take a moment)';
+        statusMessage.style.color = '#e0e0e0';
+
+        try {
+            const response = await fetch('/tts/echo', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok) {
+                statusMessage.textContent = '✅ AI Echo Ready!';
+                statusMessage.style.color = 'green';
+                recordedAudioPlayer.src = data.audio_url;
+                recordedAudioPlayer.play();
+            } else {
+                statusMessage.textContent = `❌ Error: ${data.detail}`;
+                statusMessage.style.color = 'red';
+            }
+        } catch (error) {
+            statusMessage.textContent = '❌ Error: Could not connect to the server.';
+            statusMessage.style.color = 'red';
         }
     };
 
-    // --- Initial Browser Support Check (No change needed here) ---
+    // --- Initial Browser Support Check ---
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Your browser does not support audio recording. Please use a modern browser like Chrome or Firefox.');
+        alert('Your browser does not support audio recording.');
         startButton.disabled = true;
     }
 });

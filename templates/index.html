@@ -26,7 +26,20 @@
             <button id="stopRecording">Stop Recording</button>
         </div>
         <audio id="recordedAudio" controls></audio>
+
+        <!-- Day 5 Upload Status (Commented out as it's replaced by Day 6 logic) -->
+        <!--
         <div id="upload-status" style="margin-top: 15px; color: #333;"></div>
+        -->
+
+        <!-- NEW: Day 6 UI Elements (Now clean, without inline styles) -->
+    
+    <!-- This div will show messages like "Transcribing..." -->
+    <div id="status-message"></div>
+
+    <!-- This div will display the final transcription text -->
+    <div id="transcription-result"></div>
+
     </div>
 </div>
     <script src="/static/script.js"></script>
