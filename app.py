@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from werkzeug.utils import secure_filename
 import shutil
+import google.generativeai as genai
 
 # --- NEW IMPORTS for Day 6 ---
 import assemblyai
@@ -34,6 +35,11 @@ ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 if not ASSEMBLYAI_API_KEY:
     raise Exception("Missing ASSEMBLYAI_API_KEY environment variable. Please add it to your .env file.")
 assemblyai.settings.api_key = ASSEMBLYAI_API_KEY
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise Exception("Missing GEMINI_API_KEY environment variable.")
+genai.configure(api_key=GEMINI_API_KEY)
 
 
 # --- ROUTES / ENDPOINTS ---
@@ -147,3 +153,14 @@ async def tts_echo(audio_data: UploadFile = File(...)):
     except Exception as e:
         # A general error handler for any unexpected issues
         raise HTTPException(status_code=500, detail=f"An error occurred in the echo process: {e}")
+    
+
+@app.post("/llm/query")
+async def llm_query(request: TextRequest):
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        response = model.generate_content(request.text)
+        return {"response": response.text}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred with the LLM: {e}")
