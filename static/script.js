@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    //    AI Echo Bot Functionality (UPDATED FOR DAY 7)
+    //    AI Assistant Functionality (UPDATED FOR DAY 9)
 
     const startButton = document.getElementById('startRecording');
     const stopButton = document.getElementById('stopRecording');
@@ -49,57 +49,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessage = document.getElementById('status-message');
     const transcriptionResult = document.getElementById('transcription-result');
 
-    // For Day 7, we don't need to show the transcription box. Let's hide it.
-    if(transcriptionResult) {
-        transcriptionResult.style.display = 'none';
-    }
-
-    if (!startButton || !stopButton || !recordedAudioPlayer || !statusMessage) {
+    if (!startButton || !stopButton || !recordedAudioPlayer || !statusMessage || !transcriptionResult) {
         console.error("A required UI element is missing!");
         return;
     }
 
     let mediaRecorder;
     let recordedChunks = [];
-
     stopButton.disabled = true;
 
     // --- Start Recording Event ---
     startButton.addEventListener('click', async () => {
+        // Reset all UI elements for a new query
         recordedChunks = [];
         recordedAudioPlayer.src = '';
         statusMessage.textContent = '';
-        if(transcriptionResult) transcriptionResult.textContent = '';
+        transcriptionResult.textContent = '';
+        transcriptionResult.style.display = 'none'; // Hide the result box for the new request
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-
-            // Event handler for when recording is stopped
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-                
-                // --- THIS IS THE KEY FIX ---
-                // We COMMENT OUT the lines that play the user's own voice back immediately.
-                /*
-                const audioUrl = URL.createObjectURL(blob);
-                recordedAudioPlayer.src = audioUrl;
-                */
-                
-                stream.getTracks().forEach(track => track.stop());
-
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                startButton.textContent = 'Start Recording';
-
-                // --- Call the ACTIVE Day 7 function ---
-                getAiEcho(blob);
-
-                // --- We COMMENT OUT the call to the old Day 6 function ---
-                /*
-                transcribeAudio(blob);
-                */
-            };
 
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
@@ -107,11 +77,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            // Event handler for when recording is stopped
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                stream.getTracks().forEach(track => track.stop());
+
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                startButton.textContent = 'Start Recording';
+
+                // We now call the active Day 9 function.
+                processAudioQuery(blob);
+            };
+
             mediaRecorder.start();
             startButton.disabled = true;
             stopButton.disabled = false;
             startButton.textContent = 'Recording...';
-
         } catch (error) {
             alert('Could not access microphone. Please grant permission.');
         }
@@ -124,21 +106,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Day 5 Function (Commented out, for history) ---
+    /*
+    const uploadAudio = async (audioBlob) => {
+        const formData = new FormData();
+        formData.append('audio_data', audioBlob, 'recording.webm');
+        statusMessage.textContent = 'Uploading...';
+        try {
+            const response = await fetch('/upload-audio', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (response.ok) {
+                statusMessage.textContent = `✅ Uploaded: ${data.filename} (${Math.round(data.size_bytes / 1024)} KB)`;
+            } else {
+                statusMessage.textContent = `❌ Upload failed: ${data.detail}`;
+            }
+        } catch (error) {
+            statusMessage.textContent = '❌ Upload failed: Could not connect to the server.';
+        }
+    };
+    */
 
-    // --- Day 6 Function (Commented out, no longer active) ---
+    // --- Day 6 Function (Commented out, for history) ---
     /*
     const transcribeAudio = async (audioBlob) => {
         const formData = new FormData();
         formData.append('audio_data', audioBlob, 'recording.webm');
         statusMessage.textContent = 'Transcribing...';
         try {
-            const response = await fetch('/transcribe/file', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch('/transcribe/file', { method: 'POST', body: formData });
             const data = await response.json();
             if (response.ok) {
                 statusMessage.textContent = '✅ Transcription Successful!';
+                transcriptionResult.style.display = 'block';
                 transcriptionResult.textContent = data.transcript;
             } else {
                 statusMessage.textContent = `❌ Transcription failed: ${data.detail}`;
@@ -148,27 +147,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     */
-
-
-    // --- Day 7 Function to Handle AI Echo (This one is ACTIVE) ---
+   
+    // --- Day 7 Function (Commented out, for history) ---
+    /*
     const getAiEcho = async (audioBlob) => {
         const formData = new FormData();
         formData.append('audio_data', audioBlob, 'recording.webm');
-
-        statusMessage.textContent = 'Generating AI echo... (This may take a moment)';
-        statusMessage.style.color = '#e0e0e0';
-
+        statusMessage.textContent = 'Generating AI echo...';
         try {
-            const response = await fetch('/tts/echo', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch('/tts/echo', { method: 'POST', body: formData });
             const data = await response.json();
             if (response.ok) {
                 statusMessage.textContent = '✅ AI Echo Ready!';
-                statusMessage.style.color = 'green';
                 recordedAudioPlayer.src = data.audio_url;
                 recordedAudioPlayer.play();
+            } else {
+                statusMessage.textContent = `❌ Error: ${data.detail}`;
+            }
+        } catch (error) {
+            statusMessage.textContent = '❌ Error: Could not connect to the server.';
+        }
+    };
+    */
+
+    // --- Day 9 Function to Handle the Full Pipeline (This one is ACTIVE) ---
+    const processAudioQuery = async (audioBlob) => {
+        const formData = new FormData();
+        formData.append('audio_data', audioBlob, 'recording.webm');
+
+        statusMessage.textContent = 'Thinking... (This may take a moment)';
+        statusMessage.style.color = '#e0e0e0';
+
+        try {
+            const response = await fetch('/llm/query', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                statusMessage.textContent = '✅ Response ready!';
+                statusMessage.style.color = 'green';
+                
+                // Load the AI's audio into the audio player
+                recordedAudioPlayer.src = data.audio_url;
+                recordedAudioPlayer.play()
+                // Make the result box visible and display the formatted, full text
+                transcriptionResult.style.display = 'block';
+                transcriptionResult.innerHTML = `<strong>Your Query:</strong> ${data.user_query}<br><br><strong>AI Response:</strong><br>${data.ai_response.replace(/\n/g, '<br>')}`;
+
             } else {
                 statusMessage.textContent = `❌ Error: ${data.detail}`;
                 statusMessage.style.color = 'red';

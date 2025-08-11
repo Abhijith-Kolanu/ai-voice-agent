@@ -146,7 +146,7 @@ p {
     border-radius: 5px;
     min-height: 50px;
     background-color: #fafafa;
-    
+    display: none;
     /* These styles ensure readability */
     color: #333; /* Dark text for the light background */
     text-align: left; /* Better for reading paragraphs */

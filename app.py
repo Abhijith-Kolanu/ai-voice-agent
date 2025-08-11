@@ -156,11 +156,68 @@ async def tts_echo(audio_data: UploadFile = File(...)):
     
 
 @app.post("/llm/query")
-async def llm_query(request: TextRequest):
+async def llm_query(audio_data: UploadFile = File(...)):
     try:
+        # Step 1: Transcribe the user's audio
+        transcriber = assemblyai.Transcriber()
+        transcript = transcriber.transcribe(audio_data.file)
+        if transcript.error:
+            raise HTTPException(status_code=500, detail=f"AssemblyAI Error: {transcript.error}")
+        
+        transcribed_text = transcript.text
+        if not transcribed_text.strip():
+            raise HTTPException(status_code=400, detail="Could not understand the audio.")
+        
+        # --- THIS IS THE KEY CHANGE ---
+        # Step 2: Get a thoughtful, clean response from Google Gemini
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
-        response = model.generate_content(request.text)
-        return {"response": response.text}
 
+        # Tweak the prompt to ask for a concise, plain text response
+        prompt = f"Please answer the following question concisely, in a conversational way. Do not use any markdown formatting like asterisks. Just provide a plain text response: '{transcribed_text}'"
+        response = model.generate_content(prompt)
+
+        if not response or not hasattr(response, 'text'):
+            raise HTTPException(status_code=500, detail="LLM response is empty or invalid.")
+        
+        llm_response_text = response.text
+        
+        # Step 3: Handle the Murf AI character limit
+        CHAR_LIMIT = 2800 
+        final_text_for_murf = llm_response_text
+
+        if len(llm_response_text) > CHAR_LIMIT:
+            truncation_notice = " That is a brief summary. I have more details if you'd like to read them."
+            safe_limit = CHAR_LIMIT - len(truncation_notice)
+            last_period_index = llm_response_text.rfind('.', 0, safe_limit)
+            
+            if last_period_index != -1:
+                final_text_for_murf = llm_response_text[:last_period_index + 1] + truncation_notice
+            else:
+                final_text_for_murf = llm_response_text[:safe_limit] + truncation_notice
+
+        # Step 4: Generate the audio with Murf AI
+        murf_headers = {"api-key": MURF_API_KEY, "Content-Type": "application/json"}
+        murf_payload = {"voiceId": "en-IN-aarav", "text": final_text_for_murf, "format": "mp3"}
+        # murf_payload = {
+        #     "voiceId": "murf-voice-aws-poly-divyansh-standard", # This is an example ID for an Indian voice
+        #     "text": final_text_for_murf,
+        #     "format": "mp3"
+        # }
+        murf_response = requests.post(MURF_TTS_URL, json=murf_payload, headers=murf_headers)
+        murf_response.raise_for_status()
+        murf_data = murf_response.json()
+        murf_audio_url = murf_data.get("audioFile")
+
+        if not murf_audio_url:
+            raise HTTPException(status_code=500, detail="Murf API did not return an audio file.")
+        
+        # --- THIS IS THE KEY CHANGE ---
+        # Step 5: Return a structured JSON object for the frontend
+        return {
+            "audio_url": murf_audio_url,
+            "user_query": transcribed_text,
+            "ai_response": llm_response_text
+        }
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred with the LLM: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred in the pipeline: {e}")
