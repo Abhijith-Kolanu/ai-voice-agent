@@ -2,8 +2,7 @@
 
 This repository documents my progress through the **#30DaysofVoiceAgents with Murf AI** challenge. It is a web-based, voice-first conversational AI agent that allows a user to speak a question and receive a spoken response from an AI.
 
-The UI is designed to feel like a modern, polished mobile application, with clear visual states and a dynamic chat log.
-
+The UI is designed as a sleek, modern web interface inspired by mobile applications, featuring clear visual states and a dynamic chat log.
 ---
 
 ##  STATUS: DAY 13 of 30
@@ -52,21 +51,21 @@ The project is organized with a standard structure for a FastAPI web application
 ```
 VA/
 │
-├── .env # Stores secret API keys (Not committed to Git)
-├── .gitignore # Specifies files and folders for Git to ignore
-├── app.py # The main FastAPI application server
-├── README.md # This documentation file
-├── requirements.txt # Lists the Python dependencies for the project
+├── .env                 # Stores secret API keys (Not committed to Git)
+├── .gitignore           # Specifies files and folders for Git to ignore
+├── app.py               # The main FastAPI application server
+├── README.md            # This documentation file
+├── requirements.txt     # Lists the Python dependencies for the project
 │
 ├── assets/
 │ └── error_response.mp3 # A fallback audio file for error handling
 │
 ├── static/
-│ ├── script.js # Frontend JavaScript for interactivity and API calls
-│ └── style.css # CSS for styling the web interface
+│ ├── script.js          # Frontend JavaScript for interactivity and API calls
+│ └── style.css          # CSS for styling the web interface
 │
 └── templates/
-└── index.html # The main HTML template for the user interface
+└── index.html           # The main HTML template for the user interface
 ```
 ## 🚀 Getting Started
 
@@ -97,13 +96,13 @@ Follow these instructions to get the project running in its current (Day 13) sta
     # .env
 
     # Murf AI API Key (for Text-to-Speech)
-    MURF_API_KEY="your_murf_api_key"
+    MURF_API_KEY=your_murf_api_key
 
     # AssemblyAI API Key (for Speech-to-Text)
-    ASSEMBLYAI_API_KEY="your_assemblyai_api_key"
+    ASSEMBLYAI_API_KEY=your_assemblyai_api_key
 
     # Google Gemini API Key (for the LLM)
-    GEMINI_API_KEY="your_gemini_api_key"
+    GEMINI_API_KEY=your_gemini_api_key
     ```
 
 4.  **Run the FastAPI server:**
