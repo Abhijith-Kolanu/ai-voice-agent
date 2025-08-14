@@ -17,7 +17,7 @@ This project is actively under development as part of a 30-day challenge. The cu
 -   **Conversational Memory:** The agent remembers the context of the conversation within a single session.
 -   **Sleek, Modern UI:** A dark-themed, responsive interface with chat bubbles and a minimalist design.
 -   **Clear State Management:** The UI provides visual feedback for `idle`, `listening`, `thinking`, and `speaking` states.
--   **"Live Text" Simulation:** The AI's response is typed out on screen, synchronized with the audio playback for an engaging user experience.
+    **Chat Interface:** The conversation between the user and the AI is displayed in a clean, easy-to-read chat bubble format.
 -   **Robust Error Handling:** Includes a pre-recorded fallback audio response if any part of the backend API pipeline fails.
 -   **Session Management:** Each conversation has a unique session ID.
 
