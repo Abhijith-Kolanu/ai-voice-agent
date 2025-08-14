@@ -49,6 +49,7 @@ This project uses a client-server architecture to orchestrate multiple AI servic
 ## 📁 Project Structure
 
 The project is organized with a standard structure for a FastAPI web application.
+```
 VA/
 │
 ├── .env # Stores secret API keys (Not committed to Git)
@@ -66,10 +67,7 @@ VA/
 │
 └── templates/
 └── index.html # The main HTML template for the user interface
-code
-Code
----
-
+```
 ## 🚀 Getting Started
 
 Follow these instructions to get the project running in its current (Day 13) state.
@@ -99,13 +97,13 @@ Follow these instructions to get the project running in its current (Day 13) sta
     # .env
 
     # Murf AI API Key (for Text-to-Speech)
-    MURF_API_KEY=your_murf_api_key
+    MURF_API_KEY="your_murf_api_key"
 
     # AssemblyAI API Key (for Speech-to-Text)
-    ASSEMBLYAI_API_KEY=your_assemblyai_api_key
+    ASSEMBLYAI_API_KEY="your_assemblyai_api_key"
 
     # Google Gemini API Key (for the LLM)
-    GEMINI_API_KEY=your_gemini_api_key
+    GEMINI_API_KEY="your_gemini_api_key"
     ```
 
 4.  **Run the FastAPI server:**
