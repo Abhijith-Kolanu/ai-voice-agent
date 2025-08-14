@@ -2,7 +2,8 @@
 
 This repository documents my progress through the **#30DaysofVoiceAgents with Murf AI** challenge. It is a web-based, voice-first conversational AI agent that allows a user to speak a question and receive a spoken response from an AI.
 
-The UI is designed as a sleek, modern web interface inspired by mobile applications, featuring clear visual states and a dynamic chat log.
+The UI is designed as a sleek, modern web interface inspired by mobile applications, featuring clear visual states and a dynamic chat log. Full responsiveness for mobile devices is a planned future enhancement.
+
 ---
 
 ##  STATUS: DAY 13 of 30
