@@ -15,12 +15,10 @@ This project is actively under development as part of a 30-day challenge. The cu
 
 -   **Voice-First Interaction:** Core functionality is based on voice input and audio output.
 -   **Conversational Memory:** The agent remembers the context of the conversation within a single session.
--   **Sleek, Modern UI:** A dark-themed, responsive interface with chat bubbles and a minimalist design.
+-   **Sleek, Modern UI:** A dark-themed web interface inspired by mobile design, featuring a clean chat-bubble display and minimalist controls.
 -   **Clear State Management:** The UI provides visual feedback for `idle`, `listening`, `thinking`, and `speaking` states.
-    **Chat Interface:** The conversation between the user and the AI is displayed in a clean, easy-to-read chat bubble format.
 -   **Robust Error Handling:** Includes a pre-recorded fallback audio response if any part of the backend API pipeline fails.
 -   **Session Management:** Each conversation has a unique session ID.
-
 ---
 
 ## 🛠️ Tech Stack & Architecture
