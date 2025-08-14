@@ -1,3 +1,4 @@
+
 /* --- Basic Setup & Body Styling --- */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -18,7 +19,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem; /* Adjusted gap for better spacing between cards */
+    gap: 1rem;
     width: 100%;
 }
 
@@ -70,7 +71,7 @@ p {
 .button-group {
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: 10px; /* Reduced gap to fit three buttons nicely */
 }
 
 /* --- Unified Audio Player Styles --- */
@@ -84,10 +85,11 @@ p {
 /* --- Unified Button Styles --- */
 #generate-button,
 #startRecording,
-#stopRecording {
+#stopRecording,
+#stopConversation { /* --- ADDED new button ID --- */
     width: 100%;
-    padding: 12px 20px;
-    font-size: 16px;
+    padding: 12px 15px; /* Adjusted padding slightly */
+    font-size: 14px;     /* Adjusted font size slightly */
     font-weight: bold;
     color: #ffffff;
     border: none;
@@ -106,6 +108,11 @@ p {
     background-color: #d93025; /* Red for stop */
 }
 
+#stopConversation { /* --- ADDED new button style --- */
+    background-color: #6c757d; /* Neutral grey for stop conversation */
+}
+
+
 /* --- Unified Hover Effects --- */
 #generate-button:hover, 
 #startRecording:hover {
@@ -116,17 +123,24 @@ p {
     background-color: #b0261c; /* Darker red on hover */
 }
 
+#stopConversation:hover { /* --- ADDED new button hover style --- */
+    background-color: #5a6268;
+}
+
+
 /* --- Unified Active (Click) Effects --- */
 #generate-button:active,
 #startRecording:active,
-#stopRecording:active {
+#stopRecording:active,
+#stopConversation:active { /* --- ADDED new button ID --- */
     transform: scale(0.99); /* A subtle press-down effect */
 }
 
 /* --- Unified Disabled States --- */
 #generate-button:disabled,
 #startRecording:disabled,
-#stopRecording:disabled {
+#stopRecording:disabled,
+#stopConversation:disabled { /* --- ADDED new button ID --- */
     background-color: #555;
     color: #aaa;
     cursor: not-allowed;
@@ -136,10 +150,10 @@ p {
 #status-message {
     margin-top: 15px;
     font-weight: bold;
+    min-height: 20px;
 }
 
 #transcription-result {
-    /* These styles are now an EXACT match to your inline style */
     margin-top: 10px;
     padding: 12px;
     border: 1px solid #e0e0e0;
@@ -147,8 +161,7 @@ p {
     min-height: 50px;
     background-color: #fafafa;
     display: none;
-    /* These styles ensure readability */
-    color: #333; /* Dark text for the light background */
-    text-align: left; /* Better for reading paragraphs */
-    line-height: 1.5; /* More space between lines */
+    color: #333;
+    text-align: left;
+    line-height: 1.5;
 }

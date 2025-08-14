@@ -1,215 +1,155 @@
 // Wait for the entire HTML document to be fully loaded before running any script
 document.addEventListener('DOMContentLoaded', () => {
 
-    //    Text-to-Speech (TTS) Functionality (Unchanged)
-    
-    const ttsButton = document.getElementById('generate-button');
-    const ttsInput = document.getElementById('text-input');
-    const audioPlayer = document.getElementById('audio-player');
-
-    const handleGenerateSpeech = async () => {
-        const text = ttsInput.value.trim();
-        if (!text) {
-            alert('You need to type something first!');
-            return;
-        }
-        ttsButton.disabled = true;
-        ttsButton.textContent = 'Generating...';
-        try {
-            const response = await fetch('/generate-audio', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
-            });
-            const data = await response.json();
-            if (response.ok && data.audio_url) {
-                audioPlayer.src = data.audio_url;
-                audioPlayer.play().catch(e => console.warn("Autoplay was blocked by the browser."));
-            } else {
-                alert(data.error || 'An unknown error occurred during speech generation.');
-            }
-        } catch (err) {
-            alert('Could not connect to the server. ' + err.message);
-        } finally {
-            ttsButton.disabled = false;
-            ttsButton.textContent = 'Generate Audio';
-        }
-    };
-
-    if (ttsButton) {
-        ttsButton.addEventListener('click', handleGenerateSpeech);
+    // --- Session ID Management ---
+    let sessionId;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('session_id')) {
+        sessionId = urlParams.get('session_id');
+    } else {
+        sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        window.location.search = `?session_id=${sessionId}`;
     }
 
-
-    //    AI Assistant Functionality (UPDATED FOR DAY 9)
-
+    // --- Get UI Elements ---
     const startButton = document.getElementById('startRecording');
     const stopButton = document.getElementById('stopRecording');
-    const recordedAudioPlayer = document.getElementById('recordedAudio');
+    const stopConversationButton = document.getElementById('stopConversation');
+    const assistantAudioPlayer = document.getElementById('recordedAudio');
     const statusMessage = document.getElementById('status-message');
     const transcriptionResult = document.getElementById('transcription-result');
 
-    if (!startButton || !stopButton || !recordedAudioPlayer || !statusMessage || !transcriptionResult) {
-        console.error("A required UI element is missing!");
-        return;
-    }
-
     let mediaRecorder;
     let recordedChunks = [];
-    stopButton.disabled = true;
+    
+    // --- Centralized UI Reset Function ---
+    const resetUIForNewQuery = (message) => {
+        statusMessage.textContent = message;
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        stopConversationButton.disabled = true;
+        startButton.textContent = 'Start Recording';
+        transcriptionResult.style.display = 'none';
+        transcriptionResult.innerHTML = ''; // Clear previous results
+        assistantAudioPlayer.src = '';
+    };
 
-    // --- Start Recording Event ---
+    // Set the initial UI state
+    resetUIForNewQuery('Click "Start Recording" to begin.');
+
+    // --- Start & Stop Recording Logic ---
     startButton.addEventListener('click', async () => {
-        // Reset all UI elements for a new query
         recordedChunks = [];
-        recordedAudioPlayer.src = '';
-        statusMessage.textContent = '';
-        transcriptionResult.textContent = '';
-        transcriptionResult.style.display = 'none'; // Hide the result box for the new request
-
+        statusMessage.textContent = 'Listening...';
+        transcriptionResult.style.display = 'none';
+        
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    recordedChunks.push(event.data);
-                }
-            };
-
-            // Event handler for when recording is stopped
             mediaRecorder.onstop = () => {
                 const blob = new Blob(recordedChunks, { type: 'audio/webm' });
                 stream.getTracks().forEach(track => track.stop());
-
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                startButton.textContent = 'Start Recording';
-
-                // We now call the active Day 9 function.
-                processAudioQuery(blob);
+                processConversationalAudio(blob);
             };
-
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) recordedChunks.push(event.data);
+            };
             mediaRecorder.start();
             startButton.disabled = true;
             stopButton.disabled = false;
+            stopConversationButton.disabled = true;
             startButton.textContent = 'Recording...';
         } catch (error) {
-            alert('Could not access microphone. Please grant permission.');
+            console.error('Microphone access error:', error);
+            resetUIForNewQuery('Microphone access denied. Please refresh and allow access.');
         }
     });
 
-    // --- Stop Recording Event ---
     stopButton.addEventListener('click', () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
         }
     });
 
-    // --- Day 5 Function (Commented out, for history) ---
-    /*
-    const uploadAudio = async (audioBlob) => {
-        const formData = new FormData();
-        formData.append('audio_data', audioBlob, 'recording.webm');
-        statusMessage.textContent = 'Uploading...';
+    // --- Stop Conversation Event Listener ---
+    stopConversationButton.addEventListener('click', async () => {
+        statusMessage.textContent = 'Ending session...';
+        startButton.disabled = true;
+        stopConversationButton.disabled = true;
         try {
-            const response = await fetch('/upload-audio', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (response.ok) {
-                statusMessage.textContent = `✅ Uploaded: ${data.filename} (${Math.round(data.size_bytes / 1024)} KB)`;
-            } else {
-                statusMessage.textContent = `❌ Upload failed: ${data.detail}`;
-            }
+            await fetch(`/agent/chat/${sessionId}/end`, { method: 'POST' });
         } catch (error) {
-            statusMessage.textContent = '❌ Upload failed: Could not connect to the server.';
+            console.error("Failed to notify server of session end:", error);
         }
-    };
-    */
+        setTimeout(() => {
+            // Reload the page to a clean URL, which will auto-generate a new session ID.
+            window.location.href = window.location.pathname; 
+        }, 1500);
+    });
 
-    // --- Day 6 Function (Commented out, for history) ---
-    /*
-    const transcribeAudio = async (audioBlob) => {
+    // --- Main Function to Handle a Single Conversational Turn ---
+    const processConversationalAudio = async (audioBlob) => {
         const formData = new FormData();
         formData.append('audio_data', audioBlob, 'recording.webm');
-        statusMessage.textContent = 'Transcribing...';
-        try {
-            const response = await fetch('/transcribe/file', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (response.ok) {
-                statusMessage.textContent = '✅ Transcription Successful!';
-                transcriptionResult.style.display = 'block';
-                transcriptionResult.textContent = data.transcript;
-            } else {
-                statusMessage.textContent = `❌ Transcription failed: ${data.detail}`;
-            }
-        } catch (error) {
-            statusMessage.textContent = '❌ Transcription failed: Could not connect to the server.';
-        }
-    };
-    */
-   
-    // --- Day 7 Function (Commented out, for history) ---
-    /*
-    const getAiEcho = async (audioBlob) => {
-        const formData = new FormData();
-        formData.append('audio_data', audioBlob, 'recording.webm');
-        statusMessage.textContent = 'Generating AI echo...';
-        try {
-            const response = await fetch('/tts/echo', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (response.ok) {
-                statusMessage.textContent = '✅ AI Echo Ready!';
-                recordedAudioPlayer.src = data.audio_url;
-                recordedAudioPlayer.play();
-            } else {
-                statusMessage.textContent = `❌ Error: ${data.detail}`;
-            }
-        } catch (error) {
-            statusMessage.textContent = '❌ Error: Could not connect to the server.';
-        }
-    };
-    */
-
-    // --- Day 9 Function to Handle the Full Pipeline (This one is ACTIVE) ---
-    const processAudioQuery = async (audioBlob) => {
-        const formData = new FormData();
-        formData.append('audio_data', audioBlob, 'recording.webm');
-
-        statusMessage.textContent = 'Thinking... (This may take a moment)';
-        statusMessage.style.color = '#e0e0e0';
+        statusMessage.textContent = 'Thinking...';
+        startButton.disabled = true;
+        stopButton.disabled = true;
 
         try {
-            const response = await fetch('/llm/query', {
+            const response = await fetch(`/agent/chat/${sessionId}`, {
                 method: 'POST',
                 body: formData
             });
 
-            const data = await response.json();
+            // --- KEY CHANGE STARTS HERE ---
             
-            if (response.ok) {
-                statusMessage.textContent = '✅ Response ready!';
-                statusMessage.style.color = 'green';
+            // Check if the server sent our custom fallback audio header
+            if (response.headers.get("X-Error-Type") === "Fallback-Audio") {
+                console.log("Server returned fallback audio.");
+                statusMessage.textContent = 'An error occurred. Playing fallback message.';
                 
-                // Load the AI's audio into the audio player
-                recordedAudioPlayer.src = data.audio_url;
-                recordedAudioPlayer.play()
-                // Make the result box visible and display the formatted, full text
+                // Get the response as an audio blob
+                const audioBlob = await response.blob();
+                const fallbackAudioURL = URL.createObjectURL(audioBlob);
+                
+                assistantAudioPlayer.src = fallbackAudioURL;
+                assistantAudioPlayer.play();
+
+                // When the fallback audio finishes, reset for the next turn
+                assistantAudioPlayer.addEventListener('ended', () => {
+                    resetUIForNewQuery('Please try your query again.');
+                }, { once: true });
+
+            } else if (response.ok) {
+                // This is the "Happy Path" - we received a JSON response
+                const data = await response.json();
+                
+                statusMessage.textContent = 'Speaking...';
+                assistantAudioPlayer.src = data.audio_url;
                 transcriptionResult.style.display = 'block';
                 transcriptionResult.innerHTML = `<strong>Your Query:</strong> ${data.user_query}<br><br><strong>AI Response:</strong><br>${data.ai_response.replace(/\n/g, '<br>')}`;
+                
+                assistantAudioPlayer.play();
+                
+                // When the main audio finishes, enable the next turn
+                assistantAudioPlayer.addEventListener('ended', () => {
+                    statusMessage.textContent = 'Ready for your next query.';
+                    startButton.disabled = false;
+                    stopConversationButton.disabled = false;
+                }, { once: true });
 
             } else {
-                statusMessage.textContent = `❌ Error: ${data.detail}`;
-                statusMessage.style.color = 'red';
+                // Handle other server-side errors that might still return JSON
+                const errorData = await response.json();
+                console.error("Server error:", errorData);
+                resetUIForNewQuery(`❌ Server Error: ${errorData.detail || 'Unknown error'}`);
             }
+            // --- KEY CHANGE ENDS HERE ---
+
         } catch (error) {
-            statusMessage.textContent = '❌ Error: Could not connect to the server.';
-            statusMessage.style.color = 'red';
+            // Handle network errors or other unexpected issues
+            console.error("Fetch/network error:", error);
+            resetUIForNewQuery('❌ Error: Could not connect to the server.');
         }
     };
-
-    // --- Initial Browser Support Check ---
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Your browser does not support audio recording.');
-        startButton.disabled = true;
-    }
 });
