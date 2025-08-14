@@ -1,1 +1,24 @@
+# Environment variables
 .env
+
+# Python virtual environment
+venv/
+env/
+*.venv
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE / Editor specific settings
+# (Stores your personal workspace settings for VS Code, etc.)
+.vscode/
+.idea/
+
+# Windows-specific system files
+# (Stores folder view settings and image thumbnails)
+desktop.ini
+Thumbs.db
+
+# macOS system file (good practice for collaboration)
+.DS_Store
