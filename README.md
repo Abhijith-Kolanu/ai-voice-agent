@@ -113,9 +113,9 @@ Follow these instructions to get the project running on your local machine.
     Create a file named `.env` in the root of the project and add your API keys:
     ```env
     # .env
-    MURF_API_KEY="your_murf_api_key"
-    ASSEMBLYAI_API_KEY="your_assemblyai_key"
-    GEMINI_API_KEY="your_gemini_api_key"
+    MURF_API_KEY=your_murf_api_key
+    ASSEMBLYAI_API_KEY=your_assemblyai_key
+    GEMINI_API_KEY=your_gemini_api_key
     ```
 
 5.  **Run the FastAPI server:**
