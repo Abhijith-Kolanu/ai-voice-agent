@@ -114,11 +114,9 @@ body, html {
 .mic-button.recording {
     background-color: #dc3545;
     animation: pulse 1.5s infinite;
-    transform: scale(1); /* Ensure it doesn't scale while recording */
+    transform: scale(1); 
 }
 
-/* --- NEW RULE TO FIX THE HOVER CONFLICT --- */
-/* This tells the button to stay red even when hovered during recording */
 .mic-button.recording:hover {
     background-color: #dc3545;
     transform: none;

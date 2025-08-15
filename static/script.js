@@ -20,14 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.pushState({ path: `?session_id=${sessionId}` }, '', `?session_id=${sessionId}`);
     }
 
-    // --- UPDATED: This function NO LONGER forces the scroll ---
     const addMessage = (text, sender) => {
         const messageElement = document.createElement('div');
         messageElement.className = `chat-message ${sender}`;
         const cleanedText = text.replace(/[\*#]/g, '').replace(/\n/g, '<br>');
         messageElement.innerHTML = cleanedText;
         chatLog.appendChild(messageElement);
-        // The line that forced scrolling to the bottom has been REMOVED.
     };
 
     // Event Listeners
