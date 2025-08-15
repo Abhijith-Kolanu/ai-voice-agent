@@ -43,7 +43,7 @@ This project uses a modular, service-oriented architecture to orchestrate multip
 The project is organized with a clean, modular structure for a professional FastAPI application.
 
 ```
-VA/
+ai-voice-agent/
 │
 ├── .env                # Stores secret API keys (Not committed to Git)
 ├── .gitignore          # Specifies files and folders for Git to ignore
@@ -82,8 +82,8 @@ Follow these instructions to get the project running on your local machine.
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/Abhijith-Kolanu/VA.git
-    cd VA
+    git clone https://github.com/Abhijith-Kolanu/ai-voice-agent.git
+    cd ai-voice-agent
     ```
 
 2.  **Create and activate the virtual environment:**
