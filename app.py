@@ -1,6 +1,9 @@
 import os
 import re
 import logging
+import shutil
+import uuid
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, File, UploadFile
 from fastapi.responses import HTMLResponse, FileResponse
@@ -11,7 +14,6 @@ from fastapi.templating import Jinja2Templates
 from schemas import ChatResponse
 from services import stt_service, llm_service, tts_service
 
-# Load environment variables
 load_dotenv()
 
 # --- Logging Setup ---
@@ -22,6 +24,11 @@ app = FastAPI()
 chat_history = {}
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# --- Create a temporary directory for audio files ---
+TEMP_DIR = Path("temp_audio")
+TEMP_DIR.mkdir(exist_ok=True)
+
 
 # --- ROUTES / ENDPOINTS ---
 
@@ -37,12 +44,22 @@ async def end_chat_session(session_id: str):
         return {"message": "Conversation ended and history cleared."}
     return {"message": "No active session found to end."}
 
+
 @app.post("/agent/chat/{session_id}", response_model=ChatResponse)
 async def agent_chat(session_id: str, audio_data: UploadFile = File(...)):
+    
+    # --- Define a temporary file path ---
+    # We use uuid to create a unique filename to prevent conflicts
+    temp_file_path = TEMP_DIR / f"{uuid.uuid4()}.webm"
+
     try:
-        # 1. Transcribe audio using our STT service
-        logging.info(f"[{session_id}] Transcribing audio...")
-        transcribed_text = stt_service.transcribe_audio(audio_data.file)
+        # --- NEW: Save the uploaded file to disk ---
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(audio_data.file, buffer)
+        
+        # 1. Transcribe audio using the saved file's path
+        logging.info(f"[{session_id}] Transcribing audio from file: {temp_file_path}")
+        transcribed_text = stt_service.transcribe_audio(str(temp_file_path))
         logging.info(f"[{session_id}] Transcribed text: {transcribed_text}")
         
         # 2. Manage and get chat history
@@ -78,3 +95,9 @@ async def agent_chat(session_id: str, audio_data: UploadFile = File(...)):
         logging.error(f"PIPELINE ERROR for session {session_id}: {e}", exc_info=True)
         headers = {"X-Error-Type": "Fallback-Audio"}
         return FileResponse("assets/error_response.mp3", media_type="audio/mpeg", headers=headers)
+    
+    finally:
+        # This 'finally' block ensures the temp file is deleted even if an error occurs
+        if temp_file_path.exists():
+            os.remove(temp_file_path)
+            logging.info(f"[{session_id}] Cleaned up temporary file: {temp_file_path}")
