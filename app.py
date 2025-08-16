@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, File, UploadFile
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi import WebSocket, WebSocketDisconnect
 
 # Import our new modules
 from schemas import ChatResponse
@@ -101,3 +102,30 @@ async def agent_chat(session_id: str, audio_data: UploadFile = File(...)):
         if temp_file_path.exists():
             os.remove(temp_file_path)
             logging.info(f"[{session_id}] Cleaned up temporary file: {temp_file_path}")
+
+
+# --- WebSocket Endpoint for Real-time Communication ---
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    # This is the first step. The server accepts the client's connection request.
+    await websocket.accept()
+    logging.info("WebSocket connection established.")
+    
+    try:
+        # This loop keeps the connection alive, constantly waiting for new messages.
+        while True:
+            # The server waits here until it receives a message from the client.
+            data = await websocket.receive_text()
+            logging.info(f"WebSocket received message: {data}")
+            
+            # The server sends a response back to the same client.
+            await websocket.send_text(f"Message text was: {data}")
+            logging.info(f"WebSocket echoed message: {data}")
+
+    except WebSocketDisconnect:
+        # This block runs if the client disconnects (e.g., closes the Postman tab).
+        logging.info("WebSocket connection closed.")
+    except Exception as e:
+        # This is a safety net for any other errors.
+        logging.error(f"WebSocket error: {e}")
