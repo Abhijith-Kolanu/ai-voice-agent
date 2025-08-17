@@ -106,26 +106,28 @@ async def agent_chat(session_id: str, audio_data: UploadFile = File(...)):
 
 # --- WebSocket Endpoint for Real-time Communication ---
 
+
+RECORDINGS_DIR = "recordings"
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    # This is the first step. The server accepts the client's connection request.
     await websocket.accept()
     logging.info("WebSocket connection established.")
     
+    file_path = os.path.join(RECORDINGS_DIR, f"stream_{uuid.uuid4()}.webm")
+    
     try:
-        # This loop keeps the connection alive, constantly waiting for new messages.
-        while True:
-            # The server waits here until it receives a message from the client.
-            data = await websocket.receive_text()
-            logging.info(f"WebSocket received message: {data}")
+        with open(file_path, "wb") as audio_file:
+            logging.info(f"Started saving audio to {file_path}")
             
-            # The server sends a response back to the same client.
-            await websocket.send_text(f"Message text was: {data}")
-            logging.info(f"WebSocket echoed message: {data}")
+            while True:
+                data = await websocket.receive_bytes()
+                audio_file.write(data)
 
     except WebSocketDisconnect:
-        # This block runs if the client disconnects (e.g., closes the Postman tab).
-        logging.info("WebSocket connection closed.")
+        logging.info(f"WebSocket connection closed by client. Audio stream saved to {file_path}")
     except Exception as e:
-        # This is a safety net for any other errors.
-        logging.error(f"WebSocket error: {e}")
+        logging.error(f"WebSocket error on stream {file_path}: {e}", exc_info=True)
+    finally:
+        logging.info("WebSocket function finished.")

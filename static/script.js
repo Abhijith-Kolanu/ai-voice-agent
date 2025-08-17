@@ -1,122 +1,98 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Get UI Elements ---
     const recordButton = document.getElementById('recordButton');
-    const endSessionButton = document.getElementById('endSessionButton');
-    const chatLog = document.getElementById('chat-log');
     const statusMessage = document.getElementById('status-message');
-    const assistantAudioPlayer = document.getElementById('assistantAudioPlayer');
 
-    let sessionId;
+    // --- WebSocket and MediaRecorder State ---
+    let socket;
     let mediaRecorder;
-    let recordedChunks = [];
     let isRecording = false;
-    let conversationStarted = false;
 
-    // Session Management
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('session_id')) {
-        sessionId = urlParams.get('session_id');
-    } else {
-        sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-        window.history.pushState({ path: `?session_id=${sessionId}` }, '', `?session_id=${sessionId}`);
-    }
+    // --- Function to Setup WebSocket Connection ---
+    const setupWebSocket = () => {
+        // Establish a connection to our /ws endpoint
+        socket = new WebSocket("ws://localhost:8000/ws");
 
-    const addMessage = (text, sender) => {
-        const messageElement = document.createElement('div');
-        messageElement.className = `chat-message ${sender}`;
-        const cleanedText = text.replace(/[\*#]/g, '').replace(/\n/g, '<br>');
-        messageElement.innerHTML = cleanedText;
-        chatLog.appendChild(messageElement);
+        socket.onopen = () => {
+            console.log("WebSocket connection established.");
+            statusMessage.textContent = 'Click the microphone to start streaming.';
+            recordButton.disabled = false;
+        };
+
+        socket.onmessage = (event) => {
+            console.log("Received from server:", event.data);
+            statusMessage.textContent = event.data; // Display server message
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket connection closed.");
+            statusMessage.textContent = 'Connection closed. Refresh to reconnect.';
+            recordButton.disabled = true;
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            statusMessage.textContent = 'Connection error.';
+            recordButton.disabled = true;
+        };
     };
-
-    // Event Listeners
+    
+    // --- Main Record Button Logic ---
     recordButton.addEventListener('click', () => {
-        isRecording ? stopRecording() : startRecording();
-    });
-
-    endSessionButton.addEventListener('click', () => {
-        statusMessage.textContent = 'Ending session...';
-        recordButton.disabled = true;
-        endSessionButton.disabled = true;
-        setTimeout(() => window.location.href = window.location.pathname, 1000);
-    });
-
-    assistantAudioPlayer.addEventListener('ended', () => {
-        if (conversationStarted) {
-            statusMessage.textContent = 'Ask a follow-up, or end the session.';
+        if (!isRecording) {
+            startStreaming();
         } else {
-            statusMessage.textContent = 'Click the microphone to start';
+            stopStreaming();
         }
-        recordButton.disabled = false;
-        endSessionButton.disabled = false;
-        recordButton.classList.remove('recording');
     });
 
-    // Core Recording Logic
-    const startRecording = async () => {
+    const startStreaming = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-            recordedChunks = [];
 
-            mediaRecorder.ondataavailable = event => recordedChunks.push(event.data);
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
-                stream.getTracks().forEach(track => track.stop());
-                processAudio(audioBlob);
+            // This event fires whenever a new chunk of audio is ready
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+                    // Send the binary audio data chunk over the WebSocket
+                    socket.send(event.data);
+                }
             };
 
-            mediaRecorder.start();
-            isRecording = true;
-            statusMessage.textContent = 'Listening...';
-            recordButton.classList.add('recording');
+            mediaRecorder.onstart = () => {
+                isRecording = true;
+                statusMessage.textContent = 'Streaming audio to server...';
+                recordButton.classList.add('recording');
+            };
+            
+            mediaRecorder.onstop = () => {
+                isRecording = false;
+                statusMessage.textContent = 'Streaming stopped. Waiting for server...';
+                recordButton.classList.remove('recording');
+                // Send a signal to the server that the stream has ended
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send("END_OF_STREAM");
+                }
+                // Stop the user's microphone tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            // Start recording and collect chunks every 1 second (1000ms)
+            mediaRecorder.start(1000);
+
         } catch (error) {
+            console.error('Microphone access error:', error);
             statusMessage.textContent = 'Microphone access denied.';
         }
     };
 
-    const stopRecording = () => {
-        if (!mediaRecorder) return;
-        mediaRecorder.stop();
-        isRecording = false;
-        statusMessage.textContent = 'Thinking...';
-        recordButton.classList.remove('recording');
-        recordButton.disabled = true;
-        endSessionButton.disabled = true;
-    };
-
-    // Backend Communication
-    const processAudio = async (audioBlob) => {
-        const formData = new FormData();
-        formData.append('audio_data', audioBlob, 'recording.webm');
-
-        try {
-            const response = await fetch(`/agent/chat/${sessionId}`, { method: 'POST', body: formData });
-
-            if (response.headers.get("X-Error-Type") === "Fallback-Audio") {
-                addMessage('Sorry, an error occurred. Please try again.', 'ai');
-                assistantAudioPlayer.src = URL.createObjectURL(await response.blob());
-            } else if (response.ok) {
-                const data = await response.json();
-                if (data.user_query) {
-                    addMessage(data.user_query, 'user');
-                }
-                if (data.ai_response) {
-                    addMessage(data.ai_response, 'ai');
-                }
-                assistantAudioPlayer.src = data.audio_url;
-                conversationStarted = true; 
-            } else {
-                throw new Error('Server returned an error.');
-            }
-
-            statusMessage.textContent = 'Speaking...';
-            assistantAudioPlayer.play();
-
-        } catch (error) {
-            addMessage('Could not connect to the server.', 'ai');
-            statusMessage.textContent = 'Error. Click microphone to try again.';
-            recordButton.disabled = false;
-            endSessionButton.disabled = false;
+    const stopStreaming = () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
         }
     };
+    
+    // --- Initialize the application ---
+    recordButton.disabled = true;
+    setupWebSocket();
 });
